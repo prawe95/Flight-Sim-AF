@@ -1,0 +1,742 @@
+:root {
+  --bg-glass: rgba(13, 20, 28, 0.75);
+  --bg-glass-card: rgba(18, 27, 38, 0.92);
+  --border-glass: rgba(0, 255, 170, 0.32);
+  --border-glass-hover: rgba(0, 255, 170, 0.7);
+  --accent-cyan: #00ffaa;
+  --accent-blue: #00d4ff;
+  --accent-orange: #ff9900;
+  --accent-red: #ff3344;
+  --text-primary: #ecf0f1;
+  --text-secondary: #9aa8b6;
+  --font-mono: 'SF Mono', 'Courier New', 'Consolas', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #03060a;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+}
+
+#canvas-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+#canvas-3d {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#canvas-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* UI Overlay Wrapper */
+#ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.ui-interactive {
+  pointer-events: auto;
+}
+
+/* Top Navigation Bar */
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: linear-gradient(180deg, rgba(6, 12, 18, 0.9) 0%, rgba(6, 12, 18, 0) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.app-branding {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-logo {
+  font-size: 20px;
+  filter: drop-shadow(0 0 8px var(--accent-cyan));
+}
+
+.brand-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #fff;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+.brand-badge {
+  font-size: 10px;
+  background: rgba(0, 255, 170, 0.15);
+  color: var(--accent-cyan);
+  border: 1px solid var(--accent-cyan);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
+
+.nav-cluster {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: var(--bg-glass);
+  padding: 4px 6px;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.ui-pill {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-mono);
+}
+
+.ui-pill:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ui-pill.active {
+  background: var(--accent-cyan);
+  color: #06120e;
+  box-shadow: 0 0 12px rgba(0, 255, 170, 0.6);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-icon {
+  background: var(--bg-glass);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  box-shadow: 0 0 10px rgba(0, 255, 170, 0.3);
+}
+
+.btn-icon.active {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 255, 170, 0.18);
+  color: var(--accent-cyan);
+}
+
+/* Flight Guidance Banner (Top-Center) */
+.guidance-banner {
+  align-self: center;
+  margin-top: 6px;
+  background: rgba(8, 18, 28, 0.9);
+  border: 1px solid var(--accent-cyan);
+  border-radius: 24px;
+  padding: 7px 22px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7), 0 0 16px rgba(0, 255, 170, 0.35);
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+
+.guide-badge {
+  background: var(--accent-cyan);
+  color: #04100c;
+  font-weight: 800;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  letter-spacing: 1px;
+}
+
+/* Main 3-Column Flight HUD Container (No overlapping) */
+.flight-hud-container {
+  position: absolute;
+  bottom: 60px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 20px;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.hud-pod {
+  background: rgba(8, 16, 24, 0.9);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  padding: 10px 14px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.75);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* LEFT POD: Throttle & Rudder Controls */
+.left-pod {
+  width: 250px;
+}
+
+.pod-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pod-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--text-secondary);
+}
+
+.pod-sub-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.throt-badge {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--accent-orange);
+}
+
+.throt-track {
+  width: 100%;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.throt-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #00ffaa 0%, #ffaa00 80%, #ff3344 100%);
+  border-radius: 5px;
+  transition: width 0.08s ease;
+}
+
+.throt-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.btn-throt-preset {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  padding: 6px 2px;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.btn-throt-preset:hover, .btn-throt-preset:active {
+  background: var(--accent-cyan);
+  color: #04100c;
+  border-color: var(--accent-cyan);
+}
+
+.btn-throt-preset.highlight-takeoff {
+  background: rgba(0, 255, 170, 0.22);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.btn-throt-preset.highlight-boost {
+  background: rgba(255, 80, 0, 0.22);
+  border-color: var(--accent-orange);
+  color: var(--accent-orange);
+}
+
+.throt-rudder-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.throt-step-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.throt-btn {
+  width: 68px;
+  height: 32px;
+  font-size: 11px;
+}
+
+.rudder-step-col {
+  flex: 1;
+}
+
+.rudder-btns-row {
+  display: flex;
+  gap: 6px;
+}
+
+.rudder-btn {
+  flex: 1;
+  height: 32px;
+  font-size: 11px;
+}
+
+/* Touch Button Base */
+.touch-btn {
+  background: rgba(20, 32, 44, 0.85);
+  border: 1px solid rgba(0, 255, 170, 0.45);
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-weight: bold;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.08s, background 0.08s;
+}
+
+.touch-btn:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 255, 170, 0.2);
+}
+
+.touch-btn:active {
+  background: var(--accent-cyan);
+  color: #04100c;
+  transform: scale(0.94);
+}
+
+/* CENTER POD: Primary Flight Instruments */
+.center-pod {
+  flex-direction: row;
+  gap: 16px;
+  align-items: center;
+}
+
+.instrument-box {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.speed-box {
+  min-width: 170px;
+}
+
+.alt-box {
+  min-width: 140px;
+}
+
+.inst-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--text-secondary);
+}
+
+.inst-val-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.inst-giant-val {
+  font-family: var(--font-mono);
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--accent-cyan);
+  text-shadow: 0 0 15px rgba(0, 255, 170, 0.6);
+}
+
+.alt-color {
+  color: var(--accent-blue);
+  text-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
+}
+
+.inst-unit {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.inst-sub-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.speed-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.badge-idle {
+  background: rgba(255, 255, 255, 0.1);
+  color: #aaa;
+}
+
+.badge-takeoff {
+  background: rgba(0, 255, 170, 0.25);
+  color: var(--accent-cyan);
+  border: 1px solid var(--accent-cyan);
+}
+
+.badge-airborne {
+  background: rgba(0, 212, 255, 0.25);
+  color: var(--accent-blue);
+  border: 1px solid var(--accent-blue);
+}
+
+.speed-bar-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  position: relative;
+  overflow: visible;
+  margin-top: 3px;
+}
+
+.speed-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue));
+  border-radius: 3px;
+  transition: width 0.1s ease;
+}
+
+.speed-marker-takeoff {
+  position: absolute;
+  left: 36%;
+  top: 8px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--accent-orange);
+  white-space: nowrap;
+}
+
+.inst-gear-flaps {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.status-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 2px 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* RIGHT POD: Flight Stick + Systems & Radar */
+.right-pod {
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+}
+
+.stick-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.touch-stick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 38px);
+  grid-template-rows: repeat(2, 36px);
+  gap: 5px;
+}
+
+.btn-w { grid-column: 2; grid-row: 1; }
+.btn-a { grid-column: 1; grid-row: 2; }
+.btn-s { grid-column: 2; grid-row: 2; }
+.btn-d { grid-column: 3; grid-row: 2; }
+
+.systems-row {
+  display: flex;
+  gap: 6px;
+}
+
+.sys-btn {
+  flex: 1;
+  height: 28px;
+  font-size: 9px;
+}
+
+/* Radar Minimap Box */
+.radar-box {
+  background: rgba(4, 10, 16, 0.9);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#canvas-minimap {
+  display: block;
+  border-radius: 6px;
+  width: 120px;
+  height: 120px;
+}
+
+/* Bottom Bar */
+.bottom-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 20px;
+  background: linear-gradient(0deg, rgba(6, 12, 18, 0.95) 0%, rgba(6, 12, 18, 0) 100%);
+}
+
+.preset-cluster {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-preset {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: all 0.2s ease;
+}
+
+.btn-preset:hover {
+  background: rgba(0, 255, 170, 0.18);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+/* Modals */
+.modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(3, 8, 14, 0.75);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  pointer-events: auto;
+}
+
+.modal-backdrop.hidden {
+  display: none;
+}
+
+.modal-card {
+  background: var(--bg-glass-card);
+  border: 1px solid var(--border-glass-hover);
+  border-radius: 14px;
+  padding: 24px 32px;
+  max-width: 600px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 255, 170, 0.15);
+  color: var(--text-primary);
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  font-family: var(--font-mono);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 10px;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.controls-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.controls-table th, .controls-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.controls-table th {
+  color: var(--accent-cyan);
+  font-weight: 700;
+}
+
+.key-badge {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: bold;
+}
+
+.btn-primary {
+  background: var(--accent-cyan);
+  color: #06120e;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  box-shadow: 0 0 15px rgba(0, 255, 170, 0.5);
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: #22ffbb;
+  transform: translateY(-1px);
+}
+
+.modal-crash-card {
+  border-color: var(--accent-red);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9), 0 0 35px rgba(255, 51, 68, 0.35);
+  text-align: center;
+}
+
+.crash-header {
+  font-size: 24px;
+  color: var(--accent-red);
+  font-family: var(--font-mono);
+  font-weight: 800;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+
+.crash-desc {
+  font-size: 14px;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.crash-stats {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-orange);
+  background: rgba(255, 153, 0, 0.1);
+  border: 1px solid rgba(255, 153, 0, 0.3);
+  padding: 8px;
+  border-radius: 6px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 960px) {
+  .center-pod {
+    display: none;
+  }
+}

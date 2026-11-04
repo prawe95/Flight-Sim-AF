@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Aero-X Flight Simulator | 3D Web Flight Sim</title>
+  <link rel="stylesheet" href="./src/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>">
+</head>
+<body>
+  <!-- 3D & 2D HUD Canvas Container -->
+  <div id="canvas-container">
+    <canvas id="canvas-3d"></canvas>
+    <canvas id="canvas-hud"></canvas>
+  </div>
+
+  <!-- UI Overlay -->
+  <div id="ui-overlay">
+    <!-- Top Bar -->
+    <header class="top-bar ui-interactive">
+      <div class="app-branding">
+        <span class="brand-logo">✈️</span>
+        <span class="brand-title">Aero-X</span>
+        <span class="brand-badge">SIMULATOR</span>
+      </div>
+
+      <!-- Camera Mode Pills -->
+      <nav class="nav-cluster" title="Camera View Modes (HotKey: C)">
+        <button class="ui-pill active" data-cam="CHASE">Chase (C)</button>
+        <button class="ui-pill" data-cam="COCKPIT">Cockpit</button>
+        <button class="ui-pill" data-cam="ORBIT">Orbit 360°</button>
+        <button class="ui-pill" data-cam="FLYBY">Flyby</button>
+        <button class="ui-pill" data-cam="WING">Wing Cam</button>
+      </nav>
+
+      <!-- Time of Day & Options -->
+      <div class="action-buttons">
+        <div class="nav-cluster" style="padding: 2px 4px;">
+          <button class="ui-pill active" data-time="DAY">☀️ Day</button>
+          <button class="ui-pill" data-time="SUNSET">🌅 Sunset</button>
+          <button class="ui-pill" data-time="NIGHT">🌙 Night</button>
+        </div>
+
+        <button id="btn-sound" class="btn-icon">🔊 Sound: ON</button>
+        <button id="btn-assist" class="btn-icon active" title="Fly-By-Wire stability assist">⚡ FBW: ON</button>
+        <button id="btn-help" class="btn-icon">⌨️ Controls</button>
+      </div>
+    </header>
+
+    <!-- Flight Guidance Banner (Top-Center) -->
+    <div id="flight-guidance" class="guidance-banner">
+      <span class="guide-badge">INSTRUCTION</span>
+      <span id="guide-text">Advance Throttle to 100% (Click [100% TAKEOFF] or hold Shift). At 110 KTS, hold [S] to rotate and lift off!</span>
+    </div>
+
+    <!-- Big Center Speed HUD (visible on ground during takeoff roll) -->
+    <div id="center-speed-hud" class="center-speed-hud">
+      <div class="csh-label">SPEED</div>
+      <div class="csh-value"><span id="csh-kts">0</span><span class="csh-unit">KTS</span></div>
+      <div id="csh-status" class="csh-status">PARKED — ADVANCE THROTTLE</div>
+      <div class="csh-tip">🛫 Throttle: [SHIFT] ↑ | [CTRL] ↓ &nbsp;|&nbsp; Steer: [Q] ◄ [E] ► &nbsp;|&nbsp; Rotate at 110 KTS: hold [S]</div>
+    </div>
+
+    <!-- Main Game HUD Controls & Instruments (Clean 3-column non-overlapping layout) -->
+    <div class="flight-hud-container ui-interactive">
+      <!-- 1. LEFT POD: Throttle & Rudder Controls -->
+      <div class="hud-pod left-pod">
+        <div class="pod-header">
+          <span class="pod-title">THROTTLE</span>
+          <span id="dash-throttle-percent" class="throt-badge">0%</span>
+        </div>
+
+        <!-- Throttle Level Bar -->
+        <div id="throttle-bar-track" class="throt-track" title="Click anywhere on the bar to set throttle directly!">
+          <div id="throttle-bar-fill" class="throt-fill"></div>
+        </div>
+
+        <!-- 4 Instant Throttle Presets -->
+        <div class="throt-presets-grid">
+          <button class="btn-throt-preset" data-throt="0.0">0% IDLE</button>
+          <button class="btn-throt-preset" data-throt="0.5">50%</button>
+          <button class="btn-throt-preset highlight-takeoff" data-throt="1.0">100% TAKEOFF</button>
+          <button class="btn-throt-preset highlight-boost" data-throt="1.15">🔥 BOOST</button>
+        </div>
+
+        <!-- Step Throttle & Rudder Pedals -->
+        <div class="throt-rudder-controls">
+          <div class="throt-step-col">
+            <button id="touch-throt-up" class="touch-btn throt-btn" title="Throttle Up (+25% / Hold Shift)">THR ▲</button>
+            <button id="touch-throt-down" class="touch-btn throt-btn" title="Throttle Down (-25% / Hold Ctrl)">THR ▼</button>
+          </div>
+          <div class="rudder-step-col">
+            <div class="pod-sub-label">RUDDER (Q / E)</div>
+            <div class="rudder-btns-row">
+              <button id="touch-yaw-left" class="touch-btn rudder-btn" title="Yaw Left (Q)">Q ◄</button>
+              <button id="touch-yaw-right" class="touch-btn rudder-btn" title="Yaw Right (E)">E ►</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. CENTER POD: Giant Speedometer & Altimeter Flight Cluster -->
+      <div class="hud-pod center-pod">
+        <!-- Airspeed Instrument -->
+        <div class="instrument-box speed-box">
+          <div class="inst-label">AIRSPEED</div>
+          <div class="inst-val-row">
+            <span id="dash-speed-kts" class="inst-giant-val">0</span>
+            <span class="inst-unit">KTS</span>
+          </div>
+          <div class="inst-sub-row">
+            <span id="dash-speed-kmh" class="inst-sub-val">0 km/h</span>
+            <span id="dash-speed-badge" class="speed-badge badge-idle">PARKED</span>
+          </div>
+          <div class="speed-bar-track">
+            <div id="speed-bar-fill" class="speed-bar-fill"></div>
+            <div class="speed-marker-takeoff">▲ ROTATE (110)</div>
+          </div>
+        </div>
+
+        <!-- Altimeter Instrument -->
+        <div class="instrument-box alt-box">
+          <div class="inst-label">ALTITUDE</div>
+          <div class="inst-val-row">
+            <span id="dash-alt-ft" class="inst-giant-val alt-color">0</span>
+            <span class="inst-unit">FT</span>
+          </div>
+          <div class="inst-sub-row">
+            <span id="dash-alt-m" class="inst-sub-val">0 m AGL</span>
+            <span id="dash-vsi" class="vsi-val">+0 fpm</span>
+          </div>
+          <div class="inst-gear-flaps">
+            <span id="dash-gear-badge" class="status-badge">GEAR: DOWN</span>
+            <span id="dash-flaps-badge" class="status-badge">FLAPS: 15°</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. RIGHT POD: Pitch & Roll Flight Stick + Systems & Radar -->
+      <div class="hud-pod right-pod">
+        <div class="stick-container">
+          <div class="pod-header">
+            <span class="pod-title">FLIGHT STICK (W, S, A, D)</span>
+          </div>
+          <div class="touch-stick-grid">
+            <button id="touch-pitch-down" class="touch-btn btn-w" title="Pitch Down (W)">W ▲</button>
+            <button id="touch-roll-left" class="touch-btn btn-a" title="Roll Left (A)">A ◄</button>
+            <button id="touch-pitch-up" class="touch-btn btn-s" title="Pitch Up (S / Rotate)">S ▼</button>
+            <button id="touch-roll-right" class="touch-btn btn-d" title="Roll Right (D)">D ►</button>
+          </div>
+          <div class="systems-row">
+            <button id="touch-gear" class="touch-btn sys-btn" title="Gear Toggle (G)">GEAR (G)</button>
+            <button id="touch-brakes" class="touch-btn sys-btn" title="Brakes Toggle (B)">BRAKE (B)</button>
+          </div>
+        </div>
+
+        <!-- Radar Minimap -->
+        <div class="radar-box">
+          <canvas id="canvas-minimap"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Bar (Presets & Respawn) -->
+    <footer class="bottom-bar ui-interactive">
+      <div class="preset-cluster">
+        <button id="preset-runway" class="btn-preset">🛫 Runway Takeoff (09L)</button>
+        <button id="preset-cruise" class="btn-preset">✈️ Metropolis Cruise</button>
+        <button id="preset-approach" class="btn-preset">🛬 Final Approach (ILS)</button>
+      </div>
+      <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);">
+        Aero-X v2.0 &bull; Ready to fly
+      </div>
+    </footer>
+  </div>
+
+  <!-- Help & Controls Modal -->
+  <div id="modal-help" class="modal-backdrop hidden ui-interactive">
+    <div class="modal-card">
+      <div class="modal-title">
+        <span>Flight Simulator Controls</span>
+        <button id="close-help" class="modal-close">&times;</button>
+      </div>
+
+      <table class="controls-table">
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>Primary Key</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Pitch Down / Up</strong></td>
+            <td><span class="key-badge">W</span> / <span class="key-badge">S</span></td>
+            <td>Push stick forward (W) / Pull stick back (S)</td>
+          </tr>
+          <tr>
+            <td><strong>Roll Left / Right</strong></td>
+            <td><span class="key-badge">A</span> / <span class="key-badge">D</span></td>
+            <td>Bank aircraft left (A) / right (D)</td>
+          </tr>
+          <tr>
+            <td><strong>Yaw / Rudder</strong></td>
+            <td><span class="key-badge">Q</span> / <span class="key-badge">E</span></td>
+            <td>Rudder turn left (Q) / right (E) & ground steering</td>
+          </tr>
+          <tr>
+            <td><strong>Throttle Up / Boost</strong></td>
+            <td><span class="key-badge">Shift</span> / <span class="key-badge">Space</span></td>
+            <td>Increase jet turbine power & afterburner</td>
+          </tr>
+          <tr>
+            <td><strong>Throttle Down</strong></td>
+            <td><span class="key-badge">Ctrl</span> / <span class="key-badge">Z</span></td>
+            <td>Reduce thrust to idle</td>
+          </tr>
+          <tr>
+            <td><strong>Camera Views</strong></td>
+            <td><span class="key-badge">C</span></td>
+            <td>Cycle Chase, Cockpit, Orbit 360°, Flyby, Wing</td>
+          </tr>
+          <tr>
+            <td><strong>Landing Gear</strong></td>
+            <td><span class="key-badge">G</span></td>
+            <td>Extend / Retract tricycle landing gear</td>
+          </tr>
+          <tr>
+            <td><strong>Airbrake / Brakes</strong></td>
+            <td><span class="key-badge">B</span></td>
+            <td>Deploy speedbrake & wheel brakes</td>
+          </tr>
+          <tr>
+            <td><strong>Flaps Stages</strong></td>
+            <td><span class="key-badge">F</span></td>
+            <td>Cycle Flaps 0° &rarr; 15° &rarr; 30°</td>
+          </tr>
+          <tr>
+            <td><strong>Quick Respawn</strong></td>
+            <td><span class="key-badge">R</span></td>
+            <td>Reset plane to runway immediately</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <button id="btn-invert" class="btn-preset">Invert Pitch: OFF (W Down / S Up)</button>
+        <button onclick="document.getElementById('modal-help').classList.add('hidden')" class="btn-primary">Ready to Fly</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Crash Dialog Modal -->
+  <div id="modal-crash" class="modal-backdrop hidden ui-interactive">
+    <div class="modal-card modal-crash-card">
+      <div class="crash-header">💥 AIRCRAFT DESTROYED</div>
+      <div id="crash-reason" class="crash-desc">Collision with obstacle</div>
+      <div id="crash-stats" class="crash-stats">Airspeed: 0 kts | Max G: 1.0G</div>
+      <button id="btn-respawn" class="btn-primary" style="background: #ff3344; box-shadow: 0 0 20px rgba(255, 51, 68, 0.6); color: #fff;">🔄 RESPAWN (R)</button>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
