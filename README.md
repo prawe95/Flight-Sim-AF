@@ -17,6 +17,7 @@ A modern, high-fidelity 3D web-based flight simulator built with **Three.js** an
 | **Throttle Up / Boost** | <kbd>Shift</kbd> | <kbd>Space</kbd> / On-Screen `THR ▲` | Increase turbine thrust & afterburner |
 | **Throttle Down** | <kbd>Ctrl</kbd> | <kbd>Z</kbd> / On-Screen `THR ▼` | Decrease thrust to idle |
 | **Camera View Switch** | <kbd>C</kbd> | Top Bar Pills | Cycle Chase, Cockpit, Orbit, Flyby, Wing |
+| **Fire Cannons** | <kbd>Left Mouse Button</kbd> | — | Fire tracer rounds; hits scar the ground and wreck buildings |
 | **Free Camera Look** | <kbd>Right Click + Drag</kbd> | Mouse Drag | Pan view in Cockpit or 360° Orbit |
 | **Landing Gear** | <kbd>G</kbd> | On-Screen `GEAR` | Extend / Retract landing gear |
 | **Airbrake & Brakes** | <kbd>B</kbd> | On-Screen `BRAKE` | Deploy dorsal speedbrake & wheel brakes |
@@ -65,6 +66,13 @@ A modern, high-fidelity 3D web-based flight simulator built with **Three.js** an
    - Airspeed wind rush.
    - Runway tire touchdown screech sound.
    - Stall warning audible alarm and crash audio.
+
+6. **Cannon & Destruction System**:
+   - Twin cannon fire from <kbd>Left Mouse Button</kbd> with tracer rounds, muzzle flashes, and synthesized gun audio.
+   - Ballistic rounds that inherit aircraft velocity, drop slightly over distance, and are swept-tested so they cannot tunnel through targets.
+   - Persistent scorch craters and dust puffs when rounds hit the terrain, runway, or city streets.
+   - Destructible skyscrapers: a direct hit scorches a tower, throws debris, and collapses it into rubble (collision height updates as it falls).
+   - Live cannon ammo readout and auto-reload indicator on the HUD.
 
 ---
 

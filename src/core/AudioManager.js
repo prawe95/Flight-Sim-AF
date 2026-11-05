@@ -50,6 +50,9 @@ export class AudioManager {
       this._setupWind();
       this._setupStallAlarm();
 
+      // Short noise burst reused by the cannon fire effect
+      this.gunNoiseBuffer = this._makeNoiseBuffer(0.12, 0.018);
+
       this.isInitialized = true;
     } catch (e) {
       console.warn('Web Audio could not initialize:', e);
@@ -177,6 +180,129 @@ export class AudioManager {
       gain.connect(this.masterGain);
       osc.start();
       osc.stop(this.ctx.currentTime + 0.36);
+    } catch (e) {}
+  }
+
+  _makeNoiseBuffer(duration, decaySeconds) {
+    const size = Math.max(1, Math.floor(this.ctx.sampleRate * duration));
+    const buffer = this.ctx.createBuffer(1, size, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    const decaySamples = Math.max(1, this.ctx.sampleRate * decaySeconds);
+
+    for (let i = 0; i < size; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / decaySamples);
+    }
+    return buffer;
+  }
+
+  /**
+   * Short, punchy cannon burst fired for every round.
+   */
+  playGunSound() {
+    if (!this.ctx || this.isMuted) return;
+
+    try {
+      const t = this.ctx.currentTime;
+
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = this.gunNoiseBuffer;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(1400, t);
+      filter.frequency.exponentialRampToValueAtTime(350, t + 0.1);
+      filter.Q.value = 0.9;
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.22, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.masterGain);
+      noise.start(t);
+      noise.stop(t + 0.12);
+
+      // Low-frequency cannon thump
+      const osc = this.ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(135, t);
+      osc.frequency.exponentialRampToValueAtTime(45, t + 0.09);
+
+      const thumpGain = this.ctx.createGain();
+      thumpGain.gain.setValueAtTime(0.14, t);
+      thumpGain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+
+      osc.connect(thumpGain);
+      thumpGain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.11);
+    } catch (e) {}
+  }
+
+  /**
+   * Deep rumbling explosion used when a skyscraper collapses.
+   */
+  playExplosionSound() {
+    if (!this.ctx || this.isMuted) return;
+
+    try {
+      const t = this.ctx.currentTime;
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = this._makeNoiseBuffer(1.6, 0.35);
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(900, t);
+      filter.frequency.exponentialRampToValueAtTime(70, t + 1.4);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.55, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 1.5);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.masterGain);
+      noise.start(t);
+      noise.stop(t + 1.6);
+
+      const boom = this.ctx.createOscillator();
+      boom.type = 'sine';
+      boom.frequency.setValueAtTime(85, t);
+      boom.frequency.exponentialRampToValueAtTime(28, t + 0.9);
+
+      const boomGain = this.ctx.createGain();
+      boomGain.gain.setValueAtTime(0.4, t);
+      boomGain.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+
+      boom.connect(boomGain);
+      boomGain.connect(this.masterGain);
+      boom.start(t);
+      boom.stop(t + 1.0);
+    } catch (e) {}
+  }
+
+  /**
+   * Light tick for non-lethal bullet impacts on structures.
+   */
+  playImpactSound() {
+    if (!this.ctx || this.isMuted) return;
+
+    try {
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(520, t);
+      osc.frequency.exponentialRampToValueAtTime(140, t + 0.07);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.09, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 0.09);
     } catch (e) {}
   }
 
