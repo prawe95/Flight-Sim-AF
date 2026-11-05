@@ -11,7 +11,8 @@
  * - B: Airbrake / Wheel brakes
  * - F: Flaps cycle
  * - R: Reset / Respawn
- * - Mouse drag (Right button or left in orbit): Free camera look
+ * - Left Mouse Button: Fire cannons
+ * - Right Mouse Button + Drag: Free camera look
  */
 
 export class InputManager {
@@ -31,6 +32,9 @@ export class InputManager {
     // Mouse / Camera look
     this.mouse = {
       isDown: false,
+      leftDown: false,    // primary fire button (held)
+      firePressed: false, // edge-triggered shot for very quick clicks
+      rightDown: false,   // camera look / orbit drag
       button: 0, // 0: left, 2: right
       deltaX: 0,
       deltaY: 0,
@@ -67,20 +71,40 @@ export class InputManager {
       this.keys[e.code] = false;
     });
 
-    // Mouse events for camera look
+    // Mouse events: left fires the cannons, right drags the camera
     window.addEventListener('mousedown', (e) => {
       // Don't trigger if clicked on UI buttons
       if (e.target.closest && e.target.closest('.ui-interactive')) return;
+
       this.mouse.isDown = true;
       this.mouse.button = e.button;
+      if (e.button === 0) {
+        this.mouse.leftDown = true;
+        this.mouse.firePressed = true;
+      }
+      if (e.button === 2) this.mouse.rightDown = true;
       this.mouse.currentX = e.clientX;
       this.mouse.currentY = e.clientY;
     });
 
     window.addEventListener('mouseup', (e) => {
+      // Keep track of any buttons that are still held down
+      this.mouse.leftDown = !!(e.buttons & 1);
+      this.mouse.rightDown = !!(e.buttons & 2);
+      this.mouse.isDown = this.mouse.leftDown || this.mouse.rightDown || !!(e.buttons & 4);
+
+      if (!this.mouse.isDown) {
+        this.mouse.deltaX = 0;
+        this.mouse.deltaY = 0;
+      }
+    });
+
+    // Releasing focus must not leave a trigger stuck down
+    window.addEventListener('blur', () => {
       this.mouse.isDown = false;
-      this.mouse.deltaX = 0;
-      this.mouse.deltaY = 0;
+      this.mouse.leftDown = false;
+      this.mouse.firePressed = false;
+      this.mouse.rightDown = false;
     });
 
     window.addEventListener('mousemove', (e) => {
@@ -165,8 +189,12 @@ export class InputManager {
     this.pitch += (targetPitch - this.pitch) * Math.min(1, dt * responseSpeed);
     this.roll += (targetRoll - this.roll) * Math.min(1, dt * responseSpeed);
     this.yaw += (targetYaw - this.yaw) * Math.min(1, dt * responseSpeed);
+  }
 
-    // Reset mouse delta per frame
+  /**
+   * Clear per-frame mouse deltas after the camera has consumed them.
+   */
+  endFrame() {
     this.mouse.deltaX = 0;
     this.mouse.deltaY = 0;
     this.mouse.wheelDelta = 0;

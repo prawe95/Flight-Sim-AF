@@ -42,7 +42,7 @@ export class HUD {
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   }
 
-  render(airplane, runway, camera) {
+  render(airplane, runway, camera, weapons = null) {
     const ctx = this.ctx;
     const w = this.width;
     const h = this.height;
@@ -89,6 +89,9 @@ export class HUD {
 
     // 9. Systems Telemetry (Bottom Left)
     this._drawSystemsStatus(ctx, 40, h - 70, phys);
+    if (weapons) {
+      this._drawWeaponStatus(ctx, 40, h - 104, weapons);
+    }
 
     // 10. ILS Glideslope / Localizer Crosshairs (when approaching runway)
     this._drawILS(ctx, cx, cy, phys.position);
@@ -435,6 +438,33 @@ export class HUD {
       ctx.fillStyle = this.hudCautionColor;
       ctx.fillText(`AIRBRAKE ACTIVE`, x + 150, y + 32);
     }
+  }
+
+  _drawWeaponStatus(ctx, x, y, weapons) {
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 12px "Courier New", monospace';
+
+    if (weapons.reloading) {
+      const flash = (Math.floor(Date.now() / 200) % 2) === 0;
+      ctx.fillStyle = flash ? this.hudCautionColor : 'rgba(255, 170, 0, 0.4)';
+      ctx.fillText('GUNS: RELOADING', x, y);
+    } else {
+      ctx.fillStyle = weapons.ammo > 0 ? this.hudColor : this.hudWarningColor;
+      ctx.fillText(`GUNS: ${weapons.ammo}/${weapons.ammoMax}`, x, y);
+
+      const pct = THREE.MathUtils.clamp(weapons.ammo / weapons.ammoMax, 0, 1);
+      ctx.strokeStyle = this.hudColor;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y + 7, 120, 6);
+      ctx.fillStyle = pct > 0.25 ? this.hudColor : this.hudWarningColor;
+      ctx.fillRect(x + 1, y + 8, 118 * pct, 4);
+
+      ctx.font = '10px "Courier New", monospace';
+      ctx.fillStyle = 'rgba(0, 255, 170, 0.7)';
+      ctx.fillText('LMB: FIRE', x + 128, y + 6);
+    }
+    ctx.restore();
   }
 
   _drawILS(ctx, cx, cy, planePos) {

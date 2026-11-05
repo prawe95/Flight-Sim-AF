@@ -7,6 +7,7 @@ import { Terrain } from './world/Terrain.js';
 import { Runway } from './world/Runway.js';
 import { City } from './world/City.js';
 import { Airplane } from './entities/Airplane.js';
+import { WeaponSystem } from './entities/WeaponSystem.js';
 import { HUD } from './ui/HUD.js';
 import { Minimap } from './ui/Minimap.js';
 import { UIController } from './ui/UIController.js';
@@ -44,6 +45,7 @@ class FlightSimulatorApp {
     this.runway = new Runway(this.scene);
     this.city = new City(this.scene);
     this.airplane = new Airplane(this.scene);
+    this.weapons = new WeaponSystem(this.scene, this.airplane, this.city, this.terrain, this.audio);
 
     // 4. UI & Displays
     this.hud = new HUD(this.canvasHud);
@@ -72,6 +74,7 @@ class FlightSimulatorApp {
 
   spawn(preset) {
     this.airplane.physics.reset(preset);
+    this.weapons.reset();
     this.cameraManager.setMode(CameraMode.CHASE);
     this.ui.updateCameraPills();
     this.input.resetMouseAccumulator();
@@ -133,6 +136,7 @@ class FlightSimulatorApp {
 
       // Update camera
       this.cameraManager.update(dt, this.airplane, this.input);
+      this.input.endFrame();
 
       // Update environment lighting and cloud drifting
       this.environment.update(dt, this.airplane.physics.position);
@@ -140,8 +144,14 @@ class FlightSimulatorApp {
       // Update runway lights & PAPI glideslope calculation
       this.runway.update(dt, this.airplane.physics.position);
 
-      // Update city traffic & obstacle beacons
+      // Update city traffic, collapse effects & obstacle beacons
       this.city.update(dt);
+
+      // Update weapons: firing, tracers, impacts & building destruction
+      if ((this.input.mouse.leftDown || this.input.mouse.firePressed) && !this.audio.isInitialized) {
+        this.audio.init();
+      }
+      this.weapons.update(dt, this.input);
 
       // Update sound modulation
       this.audio.update(dt, this.airplane);
@@ -153,7 +163,7 @@ class FlightSimulatorApp {
       this.renderer.render(this.scene, this.camera);
 
       // Render 2D Heads-Up Display
-      this.hud.render(this.airplane, this.runway, this.camera);
+      this.hud.render(this.airplane, this.runway, this.camera, this.weapons);
 
       // Render tactical radar minimap
       this.minimap.render(this.airplane, this.runway, this.city);

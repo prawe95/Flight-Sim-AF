@@ -342,7 +342,7 @@ export class UIController {
         } else if (phys.gear > 0.5 && altFt > 80) {
           this.dom.guideText.innerHTML = '✈️ <strong>AIRBORNE:</strong> Press <strong>[G]</strong> to retract landing gear and reduce drag.';
         } else {
-          this.dom.guideText.innerHTML = '✈️ <strong>FLYING:</strong> [W/S] Pitch &bull; [A/D] Roll &bull; [Q/E] Yaw &bull; [C] Change Camera View.';
+          this.dom.guideText.innerHTML = '✈️ <strong>FLYING:</strong> [W/S] Pitch &bull; [A/D] Roll &bull; [Q/E] Yaw &bull; [C] Camera &bull; [LMB] Fire Cannons.';
         }
       }
     }

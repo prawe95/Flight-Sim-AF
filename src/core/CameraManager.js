@@ -118,8 +118,8 @@ export class CameraManager {
     const dist = this.chaseDistance + Math.min(12, speed * 0.05);
     const height = this.chaseHeight;
 
-    // Mouse look offset when holding mouse or dragging
-    if (input.mouse.isDown && (input.mouse.accumulatedX !== 0 || input.mouse.accumulatedY !== 0)) {
+    // Mouse look offset when right-dragging (left button is the trigger)
+    if (input.mouse.rightDown && (input.mouse.accumulatedX !== 0 || input.mouse.accumulatedY !== 0)) {
       const yaw = -input.mouse.accumulatedX;
       const pitch = THREE.MathUtils.clamp(input.mouse.accumulatedY, -1.2, 1.2);
       const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
@@ -154,8 +154,8 @@ export class CameraManager {
   }
 
   _updateCockpit(dt, planePos, planeQuat, gForce, input) {
-    // Mouse look inside cockpit
-    if (input.mouse.isDown || input.mouse.accumulatedX !== 0) {
+    // Mouse look inside cockpit (right-drag only)
+    if (input.mouse.rightDown) {
       this.cockpitLookYaw = -input.mouse.accumulatedX * 1.5;
       this.cockpitLookPitch = THREE.MathUtils.clamp(-input.mouse.accumulatedY * 1.5, -1.0, 1.2);
     } else {
@@ -188,8 +188,8 @@ export class CameraManager {
   }
 
   _updateOrbit(dt, planePos, planeQuat, input) {
-    // Adjust orbit yaw/pitch with mouse
-    if (input.mouse.isDown) {
+    // Adjust orbit yaw/pitch with right-mouse drag
+    if (input.mouse.rightDown) {
       this.orbitYaw -= input.mouse.deltaX * 0.008;
       this.orbitPitch = THREE.MathUtils.clamp(this.orbitPitch + input.mouse.deltaY * 0.008, -1.4, 1.4);
     }

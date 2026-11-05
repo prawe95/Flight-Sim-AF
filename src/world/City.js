@@ -18,6 +18,21 @@ export class City {
     this.warningLights = [];
     this.trafficCars = [];
 
+    // Destruction state / effects
+    this.destroyedCount = 0;
+    this.debris = [];
+    this.debrisGeo = new THREE.BoxGeometry(1, 1, 1);
+    this.debrisMat = new THREE.MeshStandardMaterial({
+      color: 0x2c2925,
+      roughness: 0.95,
+      metalness: 0.08
+    });
+    this.scorchedMat = new THREE.MeshStandardMaterial({
+      color: 0x171412,
+      roughness: 1.0,
+      metalness: 0.05
+    });
+
     // City placement area (West of runway, spanning X: -2800 to -700, Z: -2200 to 1800)
     this.originX = -1800;
     this.originZ = 0;
@@ -134,26 +149,41 @@ export class City {
           this.group.add(roof);
 
           // Tall towers get spires & flashing red warning beacons
+          let spire = null;
+          let beacon = null;
           if (bH > 180) {
             const spireHeight = 25 + Math.random() * 35;
             const spireGeo = new THREE.CylinderGeometry(0.5, 2.0, spireHeight, 8);
-            const spire = new THREE.Mesh(spireGeo, concreteMat);
+            spire = new THREE.Mesh(spireGeo, concreteMat);
             spire.position.set(posX, bH + spireHeight / 2, posZ);
             this.group.add(spire);
 
-            const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+            beacon = new THREE.Mesh(beaconGeo, beaconMat);
             beacon.position.set(posX, bH + spireHeight + 1, posZ);
             this.group.add(beacon);
             this.warningLights.push(beacon);
           }
 
-          // Register collision bounding box (AABB)
+          // Register collision bounding box (AABB) and destructible building state
           this.buildingColliders.push({
             minX: posX - bW / 2,
             maxX: posX + bW / 2,
             minZ: posZ - bD / 2,
             maxZ: posZ + bD / 2,
-            height: bH + (bH > 180 ? 40 : 5)
+            height: bH + (bH > 180 ? 40 : 5),
+            maxHeight: bH,
+            width: bW,
+            depth: bD,
+            centerX: posX,
+            centerZ: posZ,
+            mesh: tower,
+            roof,
+            spire,
+            beacon,
+            health: 100,
+            destroyed: false,
+            collapsing: false,
+            collapseTime: 0
           });
         }
       }
@@ -235,7 +265,193 @@ export class City {
     return false;
   }
 
+  /**
+   * Sweep-test a bullet path against every building AABB.
+   * Returns the nearest hit so fast projectiles cannot tunnel through towers.
+   */
+  raycastSegment(from, to) {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const dz = to.z - from.z;
+
+    let best = null;
+    let bestT = Infinity;
+
+    for (let i = 0; i < this.buildingColliders.length; i++) {
+      const b = this.buildingColliders[i];
+      const t = this._segmentAabb(from, dx, dy, dz, b);
+      if (t !== null && t < bestT) {
+        bestT = t;
+        best = b;
+      }
+    }
+
+    if (!best) return null;
+
+    const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    return {
+      building: best,
+      t: bestT,
+      distance: bestT * length,
+      point: new THREE.Vector3(
+        from.x + dx * bestT,
+        from.y + dy * bestT,
+        from.z + dz * bestT
+      )
+    };
+  }
+
+  _segmentAabb(origin, dx, dy, dz, b) {
+    const o = [origin.x, origin.y, origin.z];
+    const d = [dx, dy, dz];
+    const min = [b.minX, 0, b.minZ];
+    const max = [b.maxX, b.height, b.maxZ];
+
+    let tmin = 0;
+    let tmax = 1;
+
+    for (let axis = 0; axis < 3; axis++) {
+      if (Math.abs(d[axis]) < 1e-9) {
+        if (o[axis] < min[axis] || o[axis] > max[axis]) return null;
+        continue;
+      }
+
+      let t1 = (min[axis] - o[axis]) / d[axis];
+      let t2 = (max[axis] - o[axis]) / d[axis];
+      if (t1 > t2) {
+        const tmp = t1;
+        t1 = t2;
+        t2 = tmp;
+      }
+
+      tmin = Math.max(tmin, t1);
+      tmax = Math.min(tmax, t2);
+      if (tmin > tmax) return null;
+    }
+
+    return tmin;
+  }
+
+  /**
+   * Apply bullet damage to a building. Towers collapse once their health is gone.
+   */
+  damageBuilding(building, amount, hitPoint) {
+    if (!building || building.destroyed) {
+      return { destroyed: false };
+    }
+
+    building.health -= amount;
+
+    if (building.health <= 0) {
+      building.destroyed = true;
+      building.collapsing = true;
+      building.collapseTime = 0;
+      this.destroyedCount++;
+
+      // Scorch the tower, snap off its rooftop details and throw debris
+      building.mesh.material = this.scorchedMat;
+      if (building.roof) building.roof.visible = false;
+      if (building.spire) building.spire.visible = false;
+      if (building.beacon) {
+        building.beacon.visible = false;
+        const idx = this.warningLights.indexOf(building.beacon);
+        if (idx >= 0) this.warningLights.splice(idx, 1);
+      }
+
+      this._spawnBuildingDebris(building);
+      return { destroyed: true };
+    }
+
+    return { destroyed: false, health: building.health };
+  }
+
+  _spawnBuildingDebris(building) {
+    const count = 10 + Math.floor(Math.random() * 7);
+    const spread = Math.max(building.width, building.depth) * 0.6;
+
+    for (let i = 0; i < count; i++) {
+      const chunk = new THREE.Mesh(this.debrisGeo, this.debrisMat);
+      const size = 2 + Math.random() * 7;
+      chunk.scale.set(size, size * (0.6 + Math.random()), size);
+      chunk.position.set(
+        building.centerX + (Math.random() - 0.5) * building.width,
+        6 + Math.random() * building.maxHeight * 0.45,
+        building.centerZ + (Math.random() - 0.5) * building.depth
+      );
+      chunk.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      chunk.castShadow = true;
+      this.group.add(chunk);
+
+      this.debris.push({
+        mesh: chunk,
+        velocity: new THREE.Vector3(
+          (Math.random() - 0.5) * spread * 0.9,
+          8 + Math.random() * 22,
+          (Math.random() - 0.5) * spread * 0.9
+        ),
+        angular: new THREE.Vector3(
+          (Math.random() - 0.5) * 4,
+          (Math.random() - 0.5) * 4,
+          (Math.random() - 0.5) * 4
+        ),
+        life: 4.5 + Math.random() * 3.0
+      });
+    }
+  }
+
+  _updateDestruction(dt) {
+    for (let i = 0; i < this.buildingColliders.length; i++) {
+      const b = this.buildingColliders[i];
+      if (!b.collapsing) continue;
+
+      b.collapseTime += dt;
+      const t = Math.min(1, b.collapseTime / 2.4);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const scaleY = THREE.MathUtils.lerp(1, 0.12, eased);
+
+      b.mesh.scale.y = b.maxHeight * scaleY;
+      b.mesh.position.y = (b.maxHeight * scaleY) / 2;
+      b.mesh.rotation.z = 0.05 * eased;
+      b.height = b.maxHeight * scaleY;
+
+      if (t >= 1) {
+        b.collapsing = false;
+      }
+    }
+  }
+
+  _updateDebris(dt) {
+    for (let i = this.debris.length - 1; i >= 0; i--) {
+      const d = this.debris[i];
+      d.life -= dt;
+
+      d.velocity.y -= 26 * dt;
+      d.mesh.position.addScaledVector(d.velocity, dt);
+      d.mesh.rotation.x += d.angular.x * dt;
+      d.mesh.rotation.y += d.angular.y * dt;
+      d.mesh.rotation.z += d.angular.z * dt;
+
+      // Settle on the street instead of falling through it
+      if (d.mesh.position.y < 1.5) {
+        d.mesh.position.y = 1.5;
+        d.velocity.multiplyScalar(0.35);
+        d.velocity.y = Math.abs(d.velocity.y) * 0.3;
+        d.angular.multiplyScalar(0.8);
+        d.life -= dt * 2.0;
+      }
+
+      if (d.life <= 0) {
+        this.group.remove(d.mesh);
+        this.debris.splice(i, 1);
+      }
+    }
+  }
+
   update(dt) {
+    // Animate collapsing towers and falling debris
+    this._updateDestruction(dt);
+    this._updateDebris(dt);
+
     // Flash red obstacle warning beacons on skyscrapers
     const t = Date.now() * 0.004;
     const isLit = (Math.sin(t) > 0.2);
